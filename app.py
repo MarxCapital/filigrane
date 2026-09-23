@@ -390,47 +390,61 @@ if lancer:
         progress.progress(1.0, text="Termine !")
         progress.empty()
 
-        n_ok = sum(1 for r in results if r[3] is None)
-        n_err = sum(1 for r in results if r[3] is not None)
-        if n_err:
-            st.warning(f"{n_ok} fichier(s) traite(s), {n_err} en erreur.")
-        else:
-            st.success(f"{n_ok} fichier(s) traite(s) avec succes !")
+        # On memorise les resultats dans la session : sans ca, cliquer sur un
+        # bouton de telechargement declenche un rerun de la page et tout
+        # redeviendrait vide (il faudrait tout regenerer).
+        st.session_state["results"] = results
+        st.session_state["results_name"] = new_name.strip()
 
-        # Telechargement groupe (.zip) si plusieurs fichiers ont reussi
-        ok_files = [(name, data) for name, data, _, err in results if err is None]
-        if len(ok_files) > 1:
-            zip_bytes = make_zip(ok_files)
-            st.download_button(
-                "⬇️ Telecharger tous les fichiers (.zip)",
-                data=zip_bytes,
-                file_name=f"fiches_{new_name.strip().replace(' ', '_')}.zip",
-                mime="application/zip",
-            )
+results = st.session_state.get("results")
 
-        st.markdown("### 3. Résultats")
+if results:
+    n_ok = sum(1 for r in results if r[3] is None)
+    n_err = sum(1 for r in results if r[3] is not None)
+    if n_err:
+        st.warning(f"{n_ok} fichier(s) traite(s), {n_err} en erreur.")
+    else:
+        st.success(f"{n_ok} fichier(s) traite(s) avec succes !")
 
-        # Detail + telechargement individuel pour chaque fichier
-        for out_filename, final_bytes, pages_without_marker, error in results:
-            if error is not None:
-                st.error(f"❌ {out_filename} : {error}")
-                continue
+    # Telechargement groupe (.zip) si plusieurs fichiers ont reussi
+    ok_files = [(name, data) for name, data, _, err in results if err is None]
+    if len(ok_files) > 1:
+        zip_bytes = make_zip(ok_files)
+        st.download_button(
+            "⬇️ Telecharger tous les fichiers (.zip)",
+            data=zip_bytes,
+            file_name=f"fiches_{st.session_state['results_name'].replace(' ', '_')}.zip",
+            mime="application/zip",
+            key="dl_zip",
+        )
 
-            with st.container(border=True):
-                st.write(f"**{out_filename}**")
-                if pages_without_marker:
-                    st.warning(
-                        "Aucun filigrane reconnu sur la ou les page(s) : "
-                        f"{', '.join(map(str, pages_without_marker))}. "
-                        "Ces pages ont ete laissees telles quelles (seule la "
-                        "bande de pied de page, si activee, a ete ajoutee)."
-                    )
-                else:
-                    st.caption("Filigrane detecte et remplace sur toutes les pages.")
-                st.download_button(
-                    "⬇️ Telecharger ce PDF",
-                    data=final_bytes,
-                    file_name=out_filename,
-                    mime="application/pdf",
-                    key=f"dl_{out_filename}",
+    st.markdown("### 3. Résultats")
+
+    if st.button("🔄 Nouveau lot (effacer ces résultats)"):
+        del st.session_state["results"]
+        st.rerun()
+
+    # Detail + telechargement individuel pour chaque fichier
+    for out_filename, final_bytes, pages_without_marker, error in results:
+        if error is not None:
+            st.error(f"❌ {out_filename} : {error}")
+            continue
+
+        with st.container(border=True):
+            st.write(f"**{out_filename}**")
+            if pages_without_marker:
+                st.warning(
+                    "Aucun filigrane reconnu sur la ou les page(s) : "
+                    f"{', '.join(map(str, pages_without_marker))}. "
+                    "Ces pages ont ete laissees telles quelles (seule la "
+                    "bande de pied de page, si activee, a ete ajoutee)."
                 )
+            else:
+                st.caption("Filigrane detecte et remplace sur toutes les pages.")
+            st.download_button(
+                "⬇️ Telecharger ce PDF",
+                data=final_bytes,
+                file_name=out_filename,
+                mime="application/pdf",
+                key=f"dl_{out_filename}",
+            )

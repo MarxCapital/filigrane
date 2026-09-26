@@ -1,4 +1,5 @@
 streamlit
 pikepdf
+pdfplumber
 pypdf
 reportlab

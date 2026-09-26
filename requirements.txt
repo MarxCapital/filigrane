@@ -1,0 +1,4 @@
+streamlit
+pikepdf
+pypdf
+reportlab

@@ -1,5 +1,5 @@
 streamlit
 pikepdf
 pdfplumber
-pypdf
+pypdf>=7.0.0,<8.0.0
 reportlab
